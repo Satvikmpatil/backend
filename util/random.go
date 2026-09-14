@@ -34,8 +34,15 @@ func RandomMoney() int64{
 }
 
 func RandomCurrency() string{
-	curr := []string{"EUR","USD"}
+	curr := []string{"EUR","USD","IND"}
 	n := len(curr)
 	return curr[rand.Intn(n)]
 }
 
+func RandomEmail() string{
+	var sb strings.Builder
+	owner := RandomOwner()
+	sb.WriteString(owner)
+	sb.WriteString("@gmail.com")
+	return sb.String()
+}
