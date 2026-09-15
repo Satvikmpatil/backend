@@ -2,11 +2,13 @@ package api
 
 import (
 	"database/sql"
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/lib/pq"
 	db "github.com/satvikmpatil/simplebank/db/sqlc"
+	"github.com/satvikmpatil/simplebank/token"
 )
 
 type CreateAccountRequest struct {
@@ -20,18 +22,19 @@ func (server *Server) createAccount(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
+	authpayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
 	arg := db.CreateAccountParams{
-		Owner:    req.Owner,
+		Owner:    authpayload.Username,
 		Currency: req.Currency,
 		Balance:  0,
 	}
 	account, err := server.store.CreateAccount(ctx, arg)
 	if err != nil {
 		if pqErr, ok := err.(*pq.Error); ok {
-			switch pqErr.Code.Name(){
-			case "foregin_key_violation","unique_key_violation":
+			switch pqErr.Code.Name() {
+			case "foregin_key_violation", "unique_key_violation":
 				ctx.JSON(http.StatusForbidden, errorResponse(err))
-		return
+				return
 			}
 		}
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
@@ -59,6 +62,11 @@ func (server *Server) getAccount(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
+	authpayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
+	if account.Owner != authpayload.Username {
+		ctx.JSON(http.StatusForbidden, errorResponse(errors.New("account doesn't belong to the authenticated user")))
+		return
+	}
 	ctx.JSON(http.StatusOK, account)
 }
 
@@ -73,8 +81,9 @@ func (server *Server) ListAccount(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, errorResponse(err))
 		return
 	}
-
+	authpayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
 	arg := db.ListAccountsParams{
+		Owner: authpayload.Username,
 		Limit:  req.PageSize,
 		Offset: (req.PageID - 1) * req.PageSize,
 	}
@@ -85,7 +94,6 @@ func (server *Server) ListAccount(ctx *gin.Context) {
 	}
 	ctx.JSON(http.StatusOK, accounts)
 }
-
 
 func (server *Server) updateAccount(ctx *gin.Context) {
 	var uriReq struct {
