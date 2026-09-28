@@ -1,0 +1,23 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: simple-bank-ingress
+  # annotations:
+  #   cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: nginx
+  # tls:
+  #   - hosts:
+  #       - api.yourdomain.com  # Change to your domain
+  #     secretName: simple-bank-tls
+  rules:
+    # - host: api.yourdomain.com  # Change to your domain
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: simple-bank-api-service
+                port:
+                  number: 80
