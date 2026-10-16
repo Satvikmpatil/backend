@@ -7,6 +7,7 @@ import (
 	"github.com/satvikmpatil/simplebank/util"
 	"github.com/stretchr/testify/require"
 )
+
 func TestPasetoMaker(t *testing.T) {
 	maker, err := NewPasetoMaker(util.RandomString(32))
 	require.NoError(t, err)
@@ -16,7 +17,7 @@ func TestPasetoMaker(t *testing.T) {
 	issuedAt := time.Now()
 	expiredAt := issuedAt.Add(duration)
 
-	token, err := maker.CreateToken(username, duration)
+	token, _, err := maker.CreateToken(username, duration)
 	require.NoError(t, err)
 	require.NotEmpty(t, token)
 	payload, err := maker.VerifyToken(token)
@@ -29,11 +30,10 @@ func TestPasetoMaker(t *testing.T) {
 
 }
 
-
 func TestExpiredPasetoToken(t *testing.T) {
 	make, err := NewPasetoMaker(util.RandomString(32))
 	require.NoError(t, err)
-	token, err := make.CreateToken(util.RandomOwner(), -time.Minute)
+	token, _, err := make.CreateToken(util.RandomOwner(), -time.Minute)
 	require.NoError(t, err)
 	require.NotEmpty(t, token)
 	payload, err := make.VerifyToken(token)
