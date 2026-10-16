@@ -51,4 +51,10 @@ docker-run:
 docker-rm:
 	docker rm simplebank
 
-.PHONY: network postgres startdb stopdb createdb dropdb migrateup migrateup1 migratedown migratedown1 sqlc test server mock docker-build docker-run docker-rm
+db_docs:
+	dbdocs build doc/db.dbml
+
+db_schema:
+	 dbml2sql --postgres -o doc/schema.sql doc/db.dbml
+
+.PHONY: network postgres startdb stopdb createdb dropdb migrateup migrateup1 migratedown migratedown1 sqlc test server mock docker-build docker-run docker-rm db_docs db_schema
