@@ -8,7 +8,6 @@ import (
 	"github.com/satvikmpatil/simplebank/util"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func (server *Server) CreateUser(ctx context.Context, req *pb.CreateUserRequest) (*pb.CreateUserResponse, error) {
@@ -30,13 +29,7 @@ func (server *Server) CreateUser(ctx context.Context, req *pb.CreateUserRequest)
 	}
 
 	rsp := &pb.CreateUserResponse{
-		User: &pb.User{
-			Username:          user.Username,
-			FullName:          user.FullName,
-			Email:             user.Email,
-			PasswordChangedAt: timestamppb.New(user.PasswordChangedAt),
-			CreatedAt:         timestamppb.New(user.CreatedAt),
-		},
+		User: convertUser(user),
 	}
 	return rsp, nil
 }
