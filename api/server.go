@@ -10,13 +10,13 @@ import (
 )
 
 type Server struct {
-	config util.Config
+	config     util.Config
 	store      db.Store
 	tokenMaker token.Maker
 	router     *gin.Engine
 }
 
-func NewServer(config util.Config, store db.Store) (*Server ,error){
+func NewServer(config util.Config, store db.Store) (*Server, error) {
 	tokenMaker, err := token.NewPasetoMaker(config.TokenSymmetricKey)
 	if err != nil {
 		panic(err)
@@ -26,23 +26,21 @@ func NewServer(config util.Config, store db.Store) (*Server ,error){
 		store:      store,
 		tokenMaker: tokenMaker,
 	}
-	
 
 	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
 		v.RegisterValidation("currency", validCurrency)
 	}
 
-
 	server.setupRouter()
-	
+
 	return server, nil
 }
 
-func (server *Server) setupRouter(){
+func (server *Server) setupRouter() {
 	router := gin.Default()
 	router.POST("/users", server.CreateUser)
-	router.POST("/users/login",server.loginUser)
-	router.POST("/tokens/renew_access",server.renewAccessToken)
+	router.POST("/users/login", server.loginUser)
+	router.POST("/tokens/renew_access", server.renewAccessToken)
 	authRoutes := router.Group("/").Use(authMiddleware(server.tokenMaker))
 
 	authRoutes.GET("/accounts/:id", server.getAccount)
