@@ -7,6 +7,7 @@ import (
 )
 
 type Config struct {
+	Env                  string        `mapstructure:"ENVIRONMENT"`
 	DBDriver             string        `mapstructure:"DB_DRIVER"`
 	DBSource             string        `mapstructure:"DB_SOURCE"`
 	MigrationURL         string        `mapstructure:"MIGRATION_URL"`
@@ -17,8 +18,7 @@ type Config struct {
 	RefreshTokenDuration time.Duration `mapstructure:"REFRESH_TOKEN_DURATION"`
 }
 
-
-func LoadConfig(path string) (config Config, err error){
+func LoadConfig(path string) (config Config, err error) {
 	viper.AddConfigPath(path)
 	viper.SetConfigName("app")
 	viper.SetConfigType("env")
@@ -26,7 +26,7 @@ func LoadConfig(path string) (config Config, err error){
 	viper.AutomaticEnv()
 
 	err = viper.ReadInConfig()
-	if err != nil{
+	if err != nil {
 		return
 	}
 	err = viper.Unmarshal(&config)
