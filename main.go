@@ -7,10 +7,15 @@ import (
 	"net"
 	"net/http"
 
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	_ "github.com/lib/pq"
+	"github.com/rakyll/statik/fs"
 	"github.com/satvikmpatil/simplebank/api"
 	db "github.com/satvikmpatil/simplebank/db/sqlc"
+	_ "github.com/satvikmpatil/simplebank/doc/statik"
 	"github.com/satvikmpatil/simplebank/gapi"
 	"github.com/satvikmpatil/simplebank/pb"
 	"github.com/satvikmpatil/simplebank/util"
@@ -30,6 +35,10 @@ func main() {
 	if err != nil {
 		log.Fatal("DB error", err)
 	}
+
+	// Run DB migrations
+	runDBMigration(config.MigrationURL, config.DBSource)
+
 	store := db.NewStore(conn)
 
 	// Run gRPC server (comment out runGinServer if you only want gRPC)
@@ -38,6 +47,19 @@ func main() {
 
 	// Or run HTTP server
 	// runGinServer(config, store)
+}
+
+func runDBMigration(migrationURL string, dbSource string) {
+	migration, err := migrate.New(migrationURL, dbSource)
+	if err != nil {
+		log.Fatal("cannot create new migrate instance:", err)
+	}
+
+	if err = migration.Up(); err != nil && err != migrate.ErrNoChange {
+		log.Fatal("failed to run migrate up:", err)
+	}
+
+	log.Println("db migrated successfully")
 }
 
 func runGrpcServer(config util.Config,store db.Store){
@@ -88,15 +110,25 @@ func runGatewayServer(config util.Config,store db.Store){
 		log.Fatal("cannot create listener")
 	}
 
+	mux := http.NewServeMux()
+	mux.Handle("/", grpcMux)
+
+	// Serve swagger documentation using statik
+	statikFS, err := fs.New()
+	if err != nil {
+		log.Fatal("cannot create statik fs:", err)
+	}
+	swaggerHandler := http.StripPrefix("/swagger/", http.FileServer(statikFS))
+	mux.Handle("/swagger/", swaggerHandler)
+
 	listener, err := net.Listen("tcp", config.HHTPServerAddress)
-	if err != nil{
+	if err != nil {
 		log.Fatal("cannot create listener")
 	}
-	mux := http.NewServeMux()
-	mux.Handle("/",grpcMux)
+
 	log.Printf("start HTTP gateway server at %s", listener.Addr().String())
-	err = http.Serve(listener,mux)
-	if err != nil{
+	err = http.Serve(listener, mux)
+	if err != nil {
 		log.Fatal("Cannot start Gateway server")
 	}
 

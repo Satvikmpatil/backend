@@ -6,12 +6,23 @@ import (
 	db "github.com/satvikmpatil/simplebank/db/sqlc"
 	"github.com/satvikmpatil/simplebank/pb"
 	"github.com/satvikmpatil/simplebank/util"
+	"github.com/satvikmpatil/simplebank/val"
+	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func (server *Server) LoginUser(ctx context.Context, req *pb.LoginUserRequest) (*pb.LoginUserResponse, error) {
+	violations := ValidateLoginUserReq(req)
+	if violations != nil {
+		return nil, invalidArgumentError(violations)
+	}
+
+	mtdt, err := server.extractMetadata(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "failed to get metadata: %s", err)
+	}
 
 	user, err := server.store.GetUser(ctx, req.GetUsername())
 	if err != nil {
@@ -41,8 +52,8 @@ func (server *Server) LoginUser(ctx context.Context, req *pb.LoginUserRequest) (
 		ID:           refreshPayload.ID,
 		Username:     user.Username,
 		RefreshToken: refreshToken,
-		UserAgent:    "",
-		ClientIp:     "",
+		UserAgent:    mtdt.UserAgent,
+		ClientIp:     mtdt.ClientIp,
 		IsBlocked:    false,
 		ExpiresAt:    refreshPayload.ExpiredAt,
 	})
@@ -59,4 +70,14 @@ func (server *Server) LoginUser(ctx context.Context, req *pb.LoginUserRequest) (
 		RefreshTokenExpiresAt: timestamppb.New(refreshPayload.ExpiredAt),
 	}
 	return rsp, nil
+}
+
+func ValidateLoginUserReq(req *pb.LoginUserRequest) (violations []*errdetails.BadRequest_FieldViolation) {
+	if err := val.ValidateUserName(req.GetUsername()); err != nil {
+		violations = append(violations, fieldViolation("username", err))
+	}
+	if err := val.ValidatePassword(req.GetPassword()); err != nil {
+		violations = append(violations, fieldViolation("password", err))
+	}
+	return violations
 }
